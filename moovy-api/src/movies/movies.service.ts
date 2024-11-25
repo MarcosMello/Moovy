@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import { MovieDto, MovieResponseDto, MovieRouteParameters } from './movie.dto';
 import { LoggedUserDto } from '../auth/auth.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MovieEntity } from '../db/entities/movie.entity';
+import { Request } from 'express';
 
 @Injectable()
 export class MoviesService {
@@ -11,6 +12,25 @@ export class MoviesService {
     @InjectRepository(MovieEntity)
     private movieRepository: Repository<MovieEntity>,
   ) {}
+
+  async getMovieById(id: string, loggedUser: LoggedUserDto): Promise<MovieDto> {
+    const movieEntity = await this.movieRepository.findOne({
+      where: { userId: loggedUser.sub, id: id },
+    });
+
+    if (!movieEntity) {
+      throw new NotFoundException(`Movie with id ${id} associated with user ${loggedUser.username} not found!`);
+    }
+
+    return {
+      id: movieEntity.id,
+      title: movieEntity.title,
+      poster: movieEntity.poster,
+      imdbRating: movieEntity.imdbRating,
+      imdbID: movieEntity.imdbID,
+      audioReviewURL: movieEntity.audioReviewURL,
+    };
+  }
 
   async getMoviesFrom(loggedUser: LoggedUserDto): Promise<MovieResponseDto> {
     const movieEntities = await this.movieRepository.find({
@@ -79,7 +99,9 @@ export class MoviesService {
 
   async update(
     parameters: MovieRouteParameters,
-    task: MovieDto,
+    movieDto: MovieDto,
+    request: Request,
+    audio?: Express.Multer.File,
   ): Promise<void> {
     const foundMovie = await this.movieRepository.findOne({
       where: { id: parameters.id },
@@ -91,12 +113,16 @@ export class MoviesService {
       );
     }
 
+    if (audio) {
+      movieDto.audioReviewURL = `${audio.filename}`;
+    }
+
     await this.movieRepository.update(foundMovie.id, {
-      title: task.title,
-      poster: task.poster,
-      imdbRating: task.imdbRating,
-      imdbID: task.imdbID,
-      audioReviewURL: task.audioReviewURL,
+      title: movieDto.title,
+      poster: movieDto.poster,
+      imdbRating: movieDto.imdbRating,
+      imdbID: movieDto.imdbID,
+      audioReviewURL: movieDto.audioReviewURL,
     });
 
     return;
