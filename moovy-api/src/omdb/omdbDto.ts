@@ -34,6 +34,7 @@ export class OmdbResponseDto {
       poster: this.Poster,
       imdbRating: this.imdbRating,
       imdbID: this.imdbID,
+      isInLibrary: false,
     };
   }
 }
@@ -111,4 +112,5 @@ export class OmdbDto {
   poster: string;
   imdbRating: string;
   imdbID: string;
+  isInLibrary: boolean;
 }

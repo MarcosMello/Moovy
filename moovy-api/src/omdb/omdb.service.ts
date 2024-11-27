@@ -9,6 +9,8 @@ import {
 } from './omdbDto';
 import { plainToInstance } from 'class-transformer';
 import { ConfigService } from '@nestjs/config';
+import { MoviesService } from "../movies/movies.service";
+import { LoggedUserDto } from "../auth/auth.dto";
 
 @Injectable()
 export class OmdbService {
@@ -16,6 +18,7 @@ export class OmdbService {
 
   constructor(
     private readonly httpService: HttpService,
+    private readonly moviesService: MoviesService,
     private readonly configService: ConfigService,
   ) {
     this.uri =
@@ -23,22 +26,26 @@ export class OmdbService {
       this.configService.get<string>('OMDB_API_KEY');
   }
 
-  async getMovieById(id: string): Promise<OmdbDto> {
+  async getMovieById(id: string, loggedUser: LoggedUserDto): Promise<OmdbDto> {
     const uri = this.uri + '&i=' + id;
 
     return this.httpService.axiosRef
       .get<OmdbResponseDto>(uri)
       .then((response) => response.data)
       .then((data) => plainToInstance(OmdbResponseDto, data))
-      .then((instance) => {
-        if (instance.Response == 'True') return instance.toOmdbDto();
+      .then(async (instance) => {
+          if (instance.Response !== 'True') throw new NotFoundException(instance.Error);
 
-        throw new NotFoundException(instance.Error);
+          const omdbMovie: OmdbDto = instance.toOmdbDto();
+
+          omdbMovie.isInLibrary = await this.moviesService.isMovieInLibrary(omdbMovie.imdbID, loggedUser);
+
+          return omdbMovie;
       });
   }
 
   async findAllMovies(
-    queryParameters: OmdbQueryParameters,
+    queryParameters: OmdbQueryParameters, loggedUser: LoggedUserDto
   ): Promise<OmdbSearchDto> {
     let query: string = '';
 
@@ -65,12 +72,19 @@ export class OmdbService {
           totalResults: totalResult,
         };
 
+        const searchIds: string[] = instance.Search.map(movie => {
+            return movie.imdbID;
+        })
+
+        const idsInLibrary: Set<String> = await this.moviesService.isMoviesInLibrary(searchIds, loggedUser);
+
         for (const movies of instance.Search) {
           omdbSearchDto.data.push({
             title: movies.Title,
             poster: movies.Poster,
             imdbRating: null,
             imdbID: movies.imdbID,
+            isInLibrary: idsInLibrary.has(movies.imdbID),
           });
         }
 

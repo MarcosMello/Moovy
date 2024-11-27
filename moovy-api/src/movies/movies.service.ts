@@ -2,7 +2,7 @@ import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common
 import { MovieDto, MovieResponseDto, MovieRouteParameters } from './movie.dto';
 import { LoggedUserDto } from '../auth/auth.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { MovieEntity } from '../db/entities/movie.entity';
 import { Request } from 'express';
 
@@ -29,7 +29,26 @@ export class MoviesService {
       imdbRating: movieEntity.imdbRating,
       imdbID: movieEntity.imdbID,
       audioReviewURL: movieEntity.audioReviewURL,
+      isInLibrary: true,
     };
+  }
+
+  async isMovieInLibrary(id: string, loggedUser: LoggedUserDto): Promise<boolean> {
+    const movieEntity = await this.movieRepository.findOne({
+      where: { userId: loggedUser.sub, imdbID: id },
+    });
+
+    return !!movieEntity;
+  }
+
+  async isMoviesInLibrary(ids: string[], loggedUser: LoggedUserDto): Promise<Set<String>> {
+    const movieEntities = await this.movieRepository.find({
+      where: { userId: loggedUser.sub, imdbID: In([...ids]) },
+    });
+
+    return new Set<String>(movieEntities.map(movieEntity => {
+      return movieEntity.imdbID;
+    }))
   }
 
   async getMoviesFrom(loggedUser: LoggedUserDto): Promise<MovieResponseDto> {
@@ -45,6 +64,7 @@ export class MoviesService {
         imdbRating: movieEntity.imdbRating,
         imdbID: movieEntity.imdbID,
         audioReviewURL: movieEntity.audioReviewURL,
+        isInLibrary: true,
       };
     });
 
@@ -94,6 +114,7 @@ export class MoviesService {
       imdbRating: savedMovie.imdbRating,
       imdbID: savedMovie.imdbID,
       audioReviewURL: savedMovie.audioReviewURL,
+      isInLibrary: true,
     };
   }
 

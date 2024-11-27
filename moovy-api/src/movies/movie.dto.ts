@@ -1,5 +1,5 @@
 import { UserDto } from '../users/user.dto';
-import { IsInstance, IsOptional, IsString, IsUUID } from 'class-validator';
+import {IsBoolean, IsInstance, IsOptional, IsString, IsUUID} from 'class-validator';
 
 export class MovieDto {
   @IsUUID()
@@ -25,6 +25,10 @@ export class MovieDto {
   @IsOptional()
   @IsString()
   audioReviewURL: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isInLibrary: boolean;
 }
 
 export class MovieRouteParameters {
