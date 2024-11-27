@@ -25,8 +25,6 @@ export const AuthProvider: React.FC<IAuthProviderProps> = ({ children }) => {
     useEffect(() => {
         const accessToken = localStorage.getItem(LOCAL_STORAGE_KEY__ACCESS_TOKEN);
 
-        console.log(accessToken);
-
         if (accessToken) {
             setAccessToken(JSON.parse(accessToken));
             return;
