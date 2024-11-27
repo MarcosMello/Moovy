@@ -1,5 +1,5 @@
 import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
-import { MovieDto, MovieResponseDto, MovieRouteParameters } from './movie.dto';
+import {MovieDto, MovieResponseDto, MovieRouteParameters, MoviesInLibraryDto} from './movie.dto';
 import { LoggedUserDto } from '../auth/auth.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -14,9 +14,10 @@ export class MoviesService {
   ) {}
 
   async getMovieById(id: string, loggedUser: LoggedUserDto): Promise<MovieDto> {
-    const movieEntity = await this.movieRepository.findOne({
-      where: { userId: loggedUser.sub, id: id },
-    });
+   const movieEntity: MovieEntity = await this.movieRepository.createQueryBuilder()
+        .where('user_id = :userId', {userId: loggedUser.sub})
+        .andWhere('id = :id', {id: id})
+        .getOne();
 
     if (!movieEntity) {
       throw new NotFoundException(`Movie with id ${id} associated with user ${loggedUser.username} not found!`);
@@ -34,20 +35,24 @@ export class MoviesService {
   }
 
   async isMovieInLibrary(id: string, loggedUser: LoggedUserDto): Promise<boolean> {
-    const movieEntity = await this.movieRepository.findOne({
-      where: { userId: loggedUser.sub, imdbID: id },
-    });
+    const movieEntity: MovieEntity = await this.movieRepository.createQueryBuilder()
+        .where('user_id = :userId', {userId: loggedUser.sub})
+        .andWhere('imdb_id = :imdbId', {imdbId: id})
+        .getOne();
 
     return !!movieEntity;
   }
 
-  async isMoviesInLibrary(ids: string[], loggedUser: LoggedUserDto): Promise<Set<String>> {
+  async isMoviesInLibrary(ids: string[], loggedUser: LoggedUserDto): Promise<Map<string, MoviesInLibraryDto>> {
     const movieEntities = await this.movieRepository.find({
       where: { userId: loggedUser.sub, imdbID: In([...ids]) },
     });
 
-    return new Set<String>(movieEntities.map(movieEntity => {
-      return movieEntity.imdbID;
+    return new Map<string, MoviesInLibraryDto>(movieEntities.map(movieEntity => {
+      return [movieEntity.imdbID, {
+        id: movieEntity.id,
+        imdbRating: movieEntity.imdbRating,
+      }];
     }))
   }
 
@@ -83,10 +88,10 @@ export class MoviesService {
     user: LoggedUserDto,
     body: MovieDto,
   ): Promise<MovieDto> {
-    const isMovieAlreadyInUserLibrary: MovieEntity =
-      await this.movieRepository.findOne({
-        where: { userId: user.sub, imdbID: body.imdbID },
-      });
+    const isMovieAlreadyInUserLibrary: MovieEntity = await this.movieRepository.createQueryBuilder()
+        .where('user_id = :userId', {userId: user.sub})
+        .andWhere('imdb_id = :imdbId', {imdbId: body.imdbID})
+        .getOne();
 
     if (isMovieAlreadyInUserLibrary) {
       throw new BadRequestException(
@@ -107,11 +112,6 @@ export class MoviesService {
 
     return {
       id: savedMovie.id,
-      user: {
-        id: savedMovie.user.id,
-        username: savedMovie.user.username,
-        password: null,
-      },
       title: savedMovie.title,
       poster: savedMovie.poster,
       imdbRating: savedMovie.imdbRating,
@@ -153,9 +153,10 @@ export class MoviesService {
   }
 
   async remove(id: string, loggedUser: LoggedUserDto): Promise<void> {
-    const movieEntity: MovieEntity = await this.movieRepository.findOne({
-      where: { userId: loggedUser.sub, id: id },
-    });
+    const movieEntity: MovieEntity = await this.movieRepository.createQueryBuilder()
+        .where('user_id = :userId', {userId: loggedUser.sub})
+        .andWhere('id = :id', {id: id})
+        .getOne();
 
     if (!movieEntity) {
       throw new NotFoundException(`Movie with id ${id} associated with user ${loggedUser.username} not found!`);

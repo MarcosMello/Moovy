@@ -108,6 +108,7 @@ export class OmdbSearchDto {
 }
 
 export class OmdbDto {
+  id?: string;
   title: string;
   poster: string;
   imdbRating: string;

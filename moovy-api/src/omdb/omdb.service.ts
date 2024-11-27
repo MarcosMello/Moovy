@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import {
   OmdbResponseDto,
@@ -11,6 +11,7 @@ import { plainToInstance } from 'class-transformer';
 import { ConfigService } from '@nestjs/config';
 import { MoviesService } from "../movies/movies.service";
 import { LoggedUserDto } from "../auth/auth.dto";
+import {MoviesInLibraryDto} from "../movies/movie.dto";
 
 @Injectable()
 export class OmdbService {
@@ -18,8 +19,8 @@ export class OmdbService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly moviesService: MoviesService,
     private readonly configService: ConfigService,
+    private readonly moviesService: MoviesService,
   ) {
     this.uri =
       'http://www.omdbapi.com/?apikey=' +
@@ -45,7 +46,7 @@ export class OmdbService {
   }
 
   async findAllMovies(
-    queryParameters: OmdbQueryParameters, loggedUser: LoggedUserDto
+    queryParameters: OmdbQueryParameters, loggedUser: LoggedUserDto, limit: number = 10
   ): Promise<OmdbSearchDto> {
     let query: string = '';
 
@@ -65,28 +66,28 @@ export class OmdbService {
 
         const totalResult = parseInt(instance.totalResults);
 
-        const omdbSearchDto: OmdbSearchDto = {
-          data: [],
-          page: 1,
-          totalPages: Math.ceil(totalResult / 10),
-          totalResults: totalResult,
-        };
-
         const searchIds: string[] = instance.Search.map(movie => {
             return movie.imdbID;
         })
 
-        const idsInLibrary: Set<String> = await this.moviesService.isMoviesInLibrary(searchIds, loggedUser);
+        const idsInLibrary: Map<string, MoviesInLibraryDto> = await this.moviesService.isMoviesInLibrary(searchIds, loggedUser);
 
-        for (const movies of instance.Search) {
-          omdbSearchDto.data.push({
-            title: movies.Title,
-            poster: movies.Poster,
-            imdbRating: null,
-            imdbID: movies.imdbID,
-            isInLibrary: idsInLibrary.has(movies.imdbID),
-          });
-        }
+          const omdbSearchDto: OmdbSearchDto = {
+              page: 1,
+              totalPages: Math.ceil(totalResult / limit),
+              totalResults: totalResult,
+              data: (instance.Search.map((movie): OmdbDto => {
+                      return {
+                          id: idsInLibrary.has(movie.imdbID) ? idsInLibrary.get(movie.imdbID).id : null,
+                          title: movie.Title,
+                          poster: movie.Poster,
+                          imdbRating: idsInLibrary.has(movie.imdbID) ? idsInLibrary.get(movie.imdbID).imdbRating : null,
+                          imdbID: movie.imdbID,
+                          isInLibrary: idsInLibrary.has(movie.imdbID),
+                      }
+                })
+              )
+          };
 
         return omdbSearchDto;
       });

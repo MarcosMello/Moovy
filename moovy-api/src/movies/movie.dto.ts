@@ -49,3 +49,8 @@ export class MovieResponseDto {
   totalPages: number;
   totalResults: number;
 }
+
+export class MoviesInLibraryDto {
+  id: string;
+  imdbRating: string;
+}
