@@ -1,7 +1,7 @@
 import {
   BadRequestException,
   Body,
-  Controller,
+  Controller, Delete,
   Get,
   HttpCode,
   Param,
@@ -68,5 +68,12 @@ export class MoviesController {
     const movie: MovieDto = await this.movieService.getMovieById(movieId, user);
 
     return response.sendFile(movie.audioReviewURL, { root: 'uploads/files' });
+  }
+
+  @Delete('/:id')
+  async removeMovie(@Param('id') movieId: string, @Req() request: any): Promise<void> {
+    const user: LoggedUserDto = plainToInstance(LoggedUserDto, request.user);
+
+    return this.movieService.remove(movieId, user);
   }
 }

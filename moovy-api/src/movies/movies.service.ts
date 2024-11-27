@@ -148,4 +148,17 @@ export class MoviesService {
 
     return;
   }
+
+  async remove(id: string, loggedUser: LoggedUserDto): Promise<void> {
+    const movieEntity: MovieEntity = await this.movieRepository.findOne({
+      where: { userId: loggedUser.sub, id: id },
+    });
+
+    if (!movieEntity) {
+      throw new NotFoundException(`Movie with id ${id} associated with user ${loggedUser.username} not found!`);
+    }
+
+    await this.movieRepository.delete(id);
+    return;
+  }
 }
