@@ -6,14 +6,14 @@ import {
   HttpCode,
   Param,
   Post,
-  Put, Req, Res, UploadedFile,
+  Put, Query, Req, Res, UploadedFile,
   UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { MoviesService } from './movies.service';
 import { LoggedUserDto } from '../auth/auth.dto';
 import { plainToInstance } from 'class-transformer';
-import { MovieDto, MovieResponseDto, MovieRouteParameters } from './movie.dto';
+import { MovieDto, MovieQueryParametersDto, MovieResponseDto, MovieRouteParameters } from './movie.dto';
 import { validate } from 'class-validator';
 import { HttpStatusCode } from 'axios';
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -27,11 +27,12 @@ export class MoviesController {
 
   @Get()
   async getLoggedUserMovies(
+    @Query() queryParameters: MovieQueryParametersDto,
     @Req() request: any,
   ): Promise<MovieResponseDto> {
     const user: LoggedUserDto = plainToInstance(LoggedUserDto, request.user);
 
-    return this.movieService.getMoviesFrom(user);
+    return this.movieService.getMoviesFrom(user, queryParameters.page);
   }
 
   @Post()

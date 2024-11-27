@@ -51,9 +51,12 @@ export class MoviesService {
     }))
   }
 
-  async getMoviesFrom(loggedUser: LoggedUserDto): Promise<MovieResponseDto> {
-    const movieEntities = await this.movieRepository.find({
+  async getMoviesFrom(loggedUser: LoggedUserDto, page: number = 1, limit: number = 10): Promise<MovieResponseDto> {
+    const offset: number = (page - 1) * limit;
+    const [ movieEntities, totalResults ] = await this.movieRepository.findAndCount({
       where: { userId: loggedUser.sub },
+      skip: offset,
+      take: limit,
     });
 
     const movies: MovieDto[] = movieEntities.map((movieEntity) => {
@@ -70,9 +73,9 @@ export class MoviesService {
 
     return {
       data: movies,
-      page: 1,
-      totalPages: 1,
-      totalResults: movies.length,
+      page: page,
+      totalPages: Math.ceil(totalResults / limit),
+      totalResults: totalResults,
     };
   }
 

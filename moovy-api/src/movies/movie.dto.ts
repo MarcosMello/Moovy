@@ -1,5 +1,12 @@
 import { UserDto } from '../users/user.dto';
-import {IsBoolean, IsInstance, IsOptional, IsString, IsUUID} from 'class-validator';
+import {IsBoolean, IsInstance, IsInt, IsOptional, IsString, IsUUID, Min} from 'class-validator';
+
+export class MovieQueryParametersDto{
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  page: number;
+}
 
 export class MovieDto {
   @IsUUID()
