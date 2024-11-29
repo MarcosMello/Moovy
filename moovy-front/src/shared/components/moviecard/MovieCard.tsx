@@ -1,7 +1,8 @@
-import React, {useEffect, useState} from "react";
+import React, {MutableRefObject, useEffect, useRef, useState} from "react";
 import {Button, Card, CardActions, CardContent, CardMedia, Icon, Stack, Typography} from "@mui/material";
-import {IMovieDto} from "../../services/api/movie/MovieService";
+import {IMovieDto, MovieService} from "../../services/api/movie/MovieService";
 import {IOmdbDto, OmdbService} from "../../services/api/omdb/OmdbService";
+import {Howl} from 'howler';
 
 export interface MovieCardProps {
     id: string;
@@ -30,6 +31,44 @@ export const MovieCard: React.FC<MovieCardProps> = ({id,
     const [imdbRatingState, setImdbRatingState] = useState(imdbRating);
     const [isInLibraryState, setIsInLibraryState] = useState(isInLibrary);
     const [idState, setIdState] = useState(id);
+
+    useEffect(() => {
+        if (!audioUrl) {
+            return;
+        }
+
+        MovieService.getUploadedAudio(idState).then((result: string | Error) => {
+            if (result instanceof Error) {
+                alert(result.message);
+                return;
+            }
+
+            audioRef.current = new Howl({
+                src: result,
+                html5: true,
+                preload: true,
+                onpause: () => {
+                    pauseAudio();
+                },
+                onend: () => {
+                    setActiveAudio(false);
+                },
+            })
+        });
+    }, [audioUrl, idState]);
+
+    const audioRef: MutableRefObject<Howl | null> = useRef(null);
+    const [isAudioActive, setActiveAudio] = useState(false);
+
+    const playAudio = () => {
+        setActiveAudio(true);
+        audioRef.current?.play();
+    };
+
+    const pauseAudio = () => {
+        setActiveAudio(false);
+        audioRef.current?.pause();
+    };
 
     useEffect(() => {
         if (!!imdbRatingState){
@@ -67,9 +106,10 @@ export const MovieCard: React.FC<MovieCardProps> = ({id,
             </CardContent>
             <CardActions sx={{mt: "auto", display: "flex", flexDirection: "column", gap: 1}}>
                 {audioUrl &&
-                    <Button variant={"contained"} sx={{ width: "100%", height: "50px" }}>
-                        <Icon>play_circle</Icon>
-                        Play
+                    <Button variant={"contained"} sx={{width: "100%", height: "50px"}}
+                            onClick={!isAudioActive ? playAudio : pauseAudio}>
+                        <Icon>{!isAudioActive ? "play_circle" : "pause_circle"}</Icon>
+                        {!isAudioActive ? "Play" : "Pause"}
                     </Button>
                 }
 

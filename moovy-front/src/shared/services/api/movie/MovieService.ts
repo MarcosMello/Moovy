@@ -71,15 +71,15 @@ const removeFromLibrary = async (id: string): Promise<void | Error> => {
     }
 }
 
-const getUploadedAudio = async (id: string): Promise<String | Error> => {
+const getUploadedAudio = async (id: string): Promise<string | Error> => {
     try {
-        const { data } = await Api.get(`/movies/${id}`);
+        const { data } = await Api.get(`/movies/${id}`, {responseType: "blob"});
 
-        if (data) {
-            return data.path;
+        if (!data) {
+            return new Error('Error encountered while loading library.');
         }
 
-        return new Error('Error encountered while loading library.');
+        return URL.createObjectURL(data);
     } catch (error) {
         console.error(error);
         return new Error((error as { message: string }).message || 'Error encountered while loading library.');
